@@ -142,8 +142,8 @@ export function MarkdownEditor() {
           background: #ffffff !important;
           color: #111111 !important;
           font-family: "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
-          font-size: 10.5pt;
-          line-height: 1.65;
+          font-size: 9.75pt;
+          line-height: 1.58;
           print-color-adjust: exact;
           -webkit-print-color-adjust: exact;
         }
@@ -159,19 +159,22 @@ export function MarkdownEditor() {
           width: 100%;
           background: #ffffff !important;
           font-family: "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
-          font-size: 10.5pt;
-          line-height: 1.65;
+          font-size: 9.75pt;
+          line-height: 1.58;
         }
-        h1, h2, h3 {
+        h1, h2, h3, h4, h5, h6 {
           break-after: avoid-page;
           page-break-after: avoid;
           font-family: inherit;
           font-weight: 600;
           line-height: 1.35;
         }
-        h1 { margin: 0 0 7mm; font-size: 18pt; }
-        h2 { margin: 8mm 0 2.5mm; font-size: 14pt; }
-        h3 { margin: 6mm 0 2.5mm; font-size: 12pt; }
+        h1 { margin: 0 0 5mm; font-size: 15pt; }
+        h2 { margin: 7mm 0 2mm; font-size: 13pt; }
+        h3 { margin: 5mm 0 2mm; font-size: 11.5pt; }
+        h4 { margin: 4mm 0 1.5mm; font-size: 10.5pt; }
+        h5 { margin: 3.5mm 0 1.5mm; font-size: 10pt; font-weight: 700; }
+        h6 { margin: 3mm 0 1.5mm; font-size: 9.5pt; font-weight: 700; }
         p { margin: 0 0 3.5mm; orphans: 3; widows: 3; }
         ul, ol { margin: 0 0 5mm; padding-left: 7mm; }
         li { margin: 1.5mm 0; }
