@@ -25,6 +25,8 @@ npm run dev
 
 ブラウザで [http://localhost:3000](http://localhost:3000) を開きます。
 
+PDFを出力する場合は`Export PDF`を押し、表示されたブラウザの印刷ダイアログで「PDFとして保存」を選択します。本文とKaTeX数式はHTMLのまま印刷されるため、PDF内のテキストを選択できます。
+
 ## 品質チェック
 
 デプロイ前に、Lint、型チェック、本番ビルドをまとめて実行できます。
@@ -76,4 +78,4 @@ npx vercel --prod
 - Tailwind CSS 4
 - `react-markdown`
 - `remark-math` / `rehype-katex`
-- `html2pdf.js`
+- ブラウザ標準の印刷機能

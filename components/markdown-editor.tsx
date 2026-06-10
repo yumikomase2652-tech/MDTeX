@@ -77,34 +77,6 @@ const tools: Tool[] = [
   { icon: Sigma, label: "数式", before: "$$", after: "$$", fallback: "E = mc^2" },
 ];
 
-const SAFE_TEXT_COLOR = "#111827";
-const SAFE_BACKGROUND_COLOR = "#ffffff";
-const SAFE_BORDER_COLOR = "#e5e7eb";
-
-function applySafePdfColors(pdfDocument: HTMLElement) {
-  const elements = [pdfDocument, ...Array.from(pdfDocument.querySelectorAll<HTMLElement>("*"))];
-
-  for (const element of elements) {
-    // Reading computed styles first ensures every color-bearing node is normalized
-    // before html2canvas parses the PDF-only DOM.
-    window.getComputedStyle(element);
-
-    element.style.color = SAFE_TEXT_COLOR;
-    element.style.backgroundColor = SAFE_BACKGROUND_COLOR;
-    element.style.borderColor = SAFE_BORDER_COLOR;
-    element.style.outlineColor = SAFE_BORDER_COLOR;
-    element.style.textDecorationColor = SAFE_TEXT_COLOR;
-    element.style.caretColor = SAFE_TEXT_COLOR;
-
-    if (element instanceof SVGElement) {
-      element.style.fill = SAFE_TEXT_COLOR;
-      element.style.stroke = SAFE_TEXT_COLOR;
-    }
-  }
-
-  pdfDocument.style.backgroundColor = SAFE_BACKGROUND_COLOR;
-}
-
 export function MarkdownEditor() {
   const [markdown, setMarkdown] = useState(starterMarkdown);
   const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
@@ -153,37 +125,184 @@ export function MarkdownEditor() {
     URL.revokeObjectURL(url);
   }
 
-  async function downloadPdf() {
+  async function printPdf() {
     const pdfDocument = pdfDocumentRef.current;
     if (!pdfDocument || isExportingPdf) return;
 
     setIsExportingPdf(true);
+    const printFrame = document.createElement("iframe");
+    printFrame.title = "PDF print document";
+    printFrame.style.position = "fixed";
+    printFrame.style.right = "100%";
+    printFrame.style.bottom = "100%";
+    printFrame.style.width = "1px";
+    printFrame.style.height = "1px";
+    printFrame.style.border = "0";
+    document.body.appendChild(printFrame);
 
     try {
-      await document.fonts.ready;
-      applySafePdfColors(pdfDocument);
-      const { default: html2pdf } = await import("html2pdf.js");
+      const printWindow = printFrame.contentWindow;
+      const printDocument = printFrame.contentDocument;
+      if (!printWindow || !printDocument) {
+        throw new Error("印刷用ドキュメントを作成できませんでした。");
+      }
 
-      await html2pdf()
-        .set({
-          filename: "document.pdf",
-          margin: [14, 14, 16, 14],
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: {
-            backgroundColor: "#ffffff",
-            scale: 2,
-            useCORS: true,
-          },
-          jsPDF: {
-            unit: "mm",
-            format: "a4",
-            orientation: "portrait",
-          },
-        })
-        .from(pdfDocument)
-        .save();
+      printDocument.open();
+      printDocument.write("<!doctype html><html lang=\"ja\"><head><title>document.pdf</title></head><body></body></html>");
+      printDocument.close();
+
+      const stylesheetLoads = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).map(
+        (stylesheet) =>
+          new Promise<void>((resolve) => {
+            const clone = stylesheet.cloneNode(true) as HTMLLinkElement;
+            clone.href = stylesheet.href;
+            clone.onload = () => resolve();
+            clone.onerror = () => resolve();
+            printDocument.head.appendChild(clone);
+          }),
+      );
+
+      for (const style of document.querySelectorAll<HTMLStyleElement>("style")) {
+        printDocument.head.appendChild(style.cloneNode(true));
+      }
+
+      const printStyle = printDocument.createElement("style");
+      printStyle.textContent = `
+        @page {
+          size: A4 portrait;
+          margin: 20mm;
+        }
+
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+          background: #ffffff !important;
+          color: #111827 !important;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 11pt;
+          line-height: 1.65;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+
+        .print-document,
+        .print-document * {
+          box-sizing: border-box;
+          color: #111827 !important;
+          background-color: #ffffff !important;
+          border-color: #e5e7eb !important;
+          box-shadow: none !important;
+        }
+
+        .print-document {
+          width: 100%;
+          background: #ffffff !important;
+        }
+
+        h1, h2, h3 {
+          break-after: avoid-page;
+          page-break-after: avoid;
+          line-height: 1.25;
+        }
+
+        h1 { margin: 0 0 8mm; font-size: 24pt; }
+        h2 { margin: 10mm 0 3mm; font-size: 17pt; }
+        h3 { margin: 8mm 0 3mm; font-size: 13pt; }
+        p { margin: 0 0 4mm; orphans: 3; widows: 3; }
+        ul, ol { margin: 0 0 5mm; padding-left: 7mm; }
+        li { margin: 1.5mm 0; }
+
+        blockquote {
+          margin: 6mm 0;
+          padding: 3mm 5mm;
+          border-left: 1mm solid #e5e7eb !important;
+          background: #ffffff !important;
+          font-style: italic;
+          break-inside: avoid-page;
+          page-break-inside: avoid;
+        }
+
+        pre {
+          overflow-wrap: anywhere;
+          white-space: pre-wrap;
+        }
+
+        pre,
+        code:not(.katex code):not(.katex-display code) {
+          background: #ffffff !important;
+          font-family: "SFMono-Regular", Consolas, monospace;
+        }
+
+        code:not(pre code):not(.katex code):not(.katex-display code) {
+          border: 1px solid #e5e7eb !important;
+          border-radius: 2px;
+          padding: 0.2mm 1mm;
+        }
+
+        table {
+          width: 100%;
+          margin: 6mm 0;
+          border-collapse: collapse;
+          break-inside: avoid-page;
+          page-break-inside: avoid;
+        }
+
+        th,
+        td {
+          border: 1px solid #e5e7eb !important;
+          padding: 2mm 3mm;
+          text-align: left;
+        }
+
+        thead { display: table-header-group; }
+        tr { break-inside: avoid-page; page-break-inside: avoid; }
+
+        .katex-display {
+          margin: 7mm 0;
+          overflow: visible !important;
+          border: 0 !important;
+          background: transparent !important;
+          padding: 0 !important;
+          text-align: center;
+          break-inside: avoid-page;
+          page-break-inside: avoid;
+        }
+
+        .katex,
+        .katex * {
+          color: #111827 !important;
+        }
+
+        a {
+          color: #111827 !important;
+          text-decoration: underline;
+        }
+
+        @media print {
+          html,
+          body {
+            width: 210mm;
+            background: #ffffff !important;
+          }
+        }
+      `;
+      printDocument.head.appendChild(printStyle);
+
+      const printArticle = printDocument.createElement("article");
+      printArticle.className = "print-document";
+      printArticle.innerHTML = pdfDocument.innerHTML;
+      printDocument.body.appendChild(printArticle);
+
+      await Promise.all(stylesheetLoads);
+      await printDocument.fonts.ready;
+
+      printWindow.addEventListener("afterprint", () => printFrame.remove(), { once: true });
+      printWindow.focus();
+      printWindow.print();
     } finally {
       setIsExportingPdf(false);
+      window.setTimeout(() => printFrame.remove(), 60_000);
     }
   }
 
@@ -213,9 +332,9 @@ export function MarkdownEditor() {
               <Download size={15} />
               <span>Export .md</span>
             </button>
-            <button className="pdf-button" onClick={downloadPdf} disabled={isExportingPdf}>
+            <button className="pdf-button" onClick={printPdf} disabled={isExportingPdf}>
               {isExportingPdf ? <Sparkles size={15} /> : <FileDown size={15} />}
-              <span>{isExportingPdf ? "Creating PDF" : "Export PDF"}</span>
+              <span>{isExportingPdf ? "Preparing print" : "Export PDF"}</span>
             </button>
           </div>
         </header>

@@ -15,7 +15,6 @@
     "check": "npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {
-    "html2pdf.js": "^0.14.0",
     "lucide-react": "^0.468.0",
     "next": "^15.1.4",
     "react": "^19.0.0",
