@@ -3,8 +3,8 @@ import "katex/dist/katex.min.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Formula — Markdown Editor",
-  description: "A focused Markdown and KaTeX editor.",
+  title: "MDTeX",
+  description: "Markdown + LaTeX math + PDF export editor for scientific reports.",
 };
 
 export default function RootLayout({
