@@ -276,7 +276,7 @@ export function MarkdownEditor() {
     <main className={dark ? "dark" : ""}>
       <div className="app-shell">
         <header className="topbar">
-          <div className="brand">
+          <div className="brand text-slate-950 dark:text-slate-50">
             <div className="brand-mark"><Sigma size={18} strokeWidth={2.4} /></div>
             <div>
               <div className="brand-name">MDTeX</div>
