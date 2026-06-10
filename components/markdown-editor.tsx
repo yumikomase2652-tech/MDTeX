@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Command, Download, Eye, FileDown, FileText, Moon, Sigma, Sparkles, Upload } from "lucide-react";
+import { Command, Download, Eye, FileDown, FileText, Moon, Sigma, Sparkles, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CommandPalette } from "@/components/command-palette";
 import { LatexPreview } from "@/components/latex-preview";
@@ -16,7 +16,6 @@ export function MarkdownEditor() {
   const [dark, setDark] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
-  const [saved, setSaved] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const pdfDocumentRef = useRef<HTMLDivElement>(null);
@@ -25,12 +24,6 @@ export function MarkdownEditor() {
   const stats = useMemo(() => {
     const words = content.trim() ? content.trim().split(/\s+/).length : 0;
     return { words, chars: content.length };
-  }, [content]);
-
-  useEffect(() => {
-    setSaved(false);
-    const timer = window.setTimeout(() => setSaved(true), 700);
-    return () => window.clearTimeout(timer);
   }, [content]);
 
   useEffect(() => {
@@ -139,7 +132,7 @@ export function MarkdownEditor() {
       printStyle.textContent = `
         @page { size: A4 portrait; margin: 18mm; }
 
-        html, body, main, .print-root, .print-document, .print-document * {
+        html, body, main, .print-root, .print-document {
           overflow: visible !important;
         }
 
@@ -148,9 +141,9 @@ export function MarkdownEditor() {
           padding: 0;
           background: #ffffff !important;
           color: #111111 !important;
-          font-family: Georgia, "Times New Roman", serif;
-          font-size: 11pt;
-          line-height: 1.68;
+          font-family: "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
+          font-size: 10.5pt;
+          line-height: 1.65;
           print-color-adjust: exact;
           -webkit-print-color-adjust: exact;
         }
@@ -162,12 +155,24 @@ export function MarkdownEditor() {
           box-shadow: none !important;
         }
 
-        .print-document { width: 100%; background: #ffffff !important; }
-        h1, h2, h3 { break-after: avoid-page; page-break-after: avoid; line-height: 1.3; }
-        h1 { margin: 0 0 8mm; font-size: 24pt; }
-        h2 { margin: 10mm 0 3mm; font-size: 17pt; }
-        h3 { margin: 8mm 0 3mm; font-size: 13pt; }
-        p { margin: 0 0 4mm; orphans: 3; widows: 3; }
+        .print-document {
+          width: 100%;
+          background: #ffffff !important;
+          font-family: "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
+          font-size: 10.5pt;
+          line-height: 1.65;
+        }
+        h1, h2, h3 {
+          break-after: avoid-page;
+          page-break-after: avoid;
+          font-family: inherit;
+          font-weight: 600;
+          line-height: 1.35;
+        }
+        h1 { margin: 0 0 7mm; font-size: 18pt; }
+        h2 { margin: 8mm 0 2.5mm; font-size: 14pt; }
+        h3 { margin: 6mm 0 2.5mm; font-size: 12pt; }
+        p { margin: 0 0 3.5mm; orphans: 3; widows: 3; }
         ul, ol { margin: 0 0 5mm; padding-left: 7mm; }
         li { margin: 1.5mm 0; }
         img { display: block; max-width: 100% !important; max-height: 230mm; margin: 6mm auto; object-fit: contain; }
@@ -204,13 +209,17 @@ export function MarkdownEditor() {
         thead { display: table-header-group; }
         tr { break-inside: avoid-page; page-break-inside: avoid; }
 
-        .katex, .katex *, .katex-display, .katex-display * {
+        .katex, .katex *, .katex-display, .katex-display > .katex {
           overflow: visible !important;
         }
-        .katex { font-size: 1.08em !important; line-height: 1.8 !important; }
+        .katex {
+          font-family: KaTeX_Main, "Times New Roman", serif;
+          font-size: 1.06em !important;
+          line-height: 1.6 !important;
+        }
         .katex-display {
-          margin: 1.4em 0 !important;
-          padding: 0.9em 0 1.1em !important;
+          margin: 1.25em 0 !important;
+          padding: 0.7em 0 0.85em !important;
           border: 0 !important;
           background: transparent !important;
           text-align: center;
@@ -218,15 +227,17 @@ export function MarkdownEditor() {
           page-break-inside: avoid !important;
         }
         .katex-html {
-          display: inline-block !important;
+          display: inline !important;
           overflow: visible !important;
-          padding: 0.1em 0 0.22em;
         }
         .katex .mfrac, .katex .vlist-t, .katex .vlist-r, .katex .vlist {
           overflow: visible !important;
         }
+        .katex .stretchy, .katex .hide-tail {
+          overflow: hidden !important;
+        }
         .katex .frac-line {
-          border-bottom-width: 0.07em !important;
+          border-bottom-width: 0.06em !important;
           border-bottom-style: solid !important;
           border-bottom-color: #111111 !important;
         }
@@ -269,17 +280,13 @@ export function MarkdownEditor() {
             <div className="brand-mark"><Sigma size={18} strokeWidth={2.4} /></div>
             <div>
               <div className="brand-name">MDTeX</div>
-              <div className="brand-subtitle">Scientific report editor · v0.2</div>
+              <div className="brand-subtitle">Scientific report editor · v2</div>
             </div>
           </div>
 
           <ModeSwitcher mode={mode} onChange={setMode} />
 
           <div className="top-actions">
-            <div className={`save-state ${saved ? "is-saved" : ""}`}>
-              {saved ? <Check size={14} /> : <Sparkles size={14} />}
-              <span>{saved ? "Saved" : "Saving"}</span>
-            </div>
             <button className="command-button" onClick={() => setPaletteOpen(true)} aria-label="Commands">
               <Command size={15} /><span>Commands</span><kbd>⌘K</kbd>
             </button>
