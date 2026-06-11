@@ -1,30 +1,139 @@
 "use client";
 
-import { Command, Download, Eye, FileDown, FileText, Moon, Sigma, Sparkles, Upload } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Command,
+  Download,
+  Eye,
+  FileDown,
+  Files,
+  FileText,
+  FolderOpen,
+  HardDrive,
+  Moon,
+  RotateCcw,
+  Sigma,
+  Sparkles,
+  Upload,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { CommandPalette } from "@/components/command-palette";
 import { LatexPreview } from "@/components/latex-preview";
 import { ModeSwitcher } from "@/components/mode-switcher";
 import { Preview } from "@/components/preview";
+import { SavedDocuments } from "@/components/saved-documents";
 import { DEFAULT_LATEX, DEFAULT_MARKDOWN, type EditorMode } from "@/lib/default-content";
+import {
+  createDocument,
+  createId,
+  deriveTitle,
+  formatLocalDate,
+  readDocumentsStore,
+  writeDocumentsStore,
+  type SavedDocument,
+} from "@/lib/document-storage";
 import type { CommandSnippet } from "@/lib/snippets";
+
+type Documents = Record<EditorMode, string>;
+type SaveStatus = "unsaved" | "saving" | "saved" | "off" | "error";
+
+function isQuotaError(error: unknown) {
+  return error instanceof DOMException && (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED");
+}
 
 export function MarkdownEditor() {
   const [mode, setMode] = useState<EditorMode>("markdown");
-  const [documents, setDocuments] = useState({ markdown: DEFAULT_MARKDOWN, latex: DEFAULT_LATEX });
+  const [documents, setDocuments] = useState<Documents>({ markdown: DEFAULT_MARKDOWN, latex: DEFAULT_LATEX });
+  const [savedDocuments, setSavedDocuments] = useState<SavedDocument[]>([]);
+  const [currentDocumentId, setCurrentDocumentId] = useState("");
+  const [importedFileName, setImportedFileName] = useState<string | undefined>();
+  const [autoSave, setAutoSave] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("unsaved");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
   const [dark, setDark] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfDocumentRef = useRef<HTMLDivElement>(null);
+  const skipInitialSaveRef = useRef(true);
+  const skipNextAutoSaveRef = useRef(false);
+  const savedDocumentsRef = useRef<SavedDocument[]>([]);
   const content = documents[mode];
 
-  const stats = useMemo(() => {
-    const words = content.trim() ? content.trim().split(/\s+/).length : 0;
-    return { words, chars: content.length };
-  }, [content]);
+  useEffect(() => {
+    try {
+      const stored = readDocumentsStore();
+      const current = stored.documents.find((document) => document.id === stored.currentDocumentId) ?? stored.documents[0];
+      setSavedDocuments(stored.documents);
+      setCurrentDocumentId(current.id);
+      setDocuments({ markdown: current.markdownContent, latex: current.latexContent });
+      setMode(current.mode);
+      setAutoSave(stored.autoSave);
+      setLastUpdated(current.updatedAt);
+      setImportedFileName(current.importedFileName);
+      setSaveStatus(stored.autoSave ? "saved" : "off");
+      writeDocumentsStore(stored);
+    } catch {
+      const initial = createDocument();
+      setSavedDocuments([initial]);
+      setCurrentDocumentId(initial.id);
+      setLastUpdated(initial.updatedAt);
+    }
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    savedDocumentsRef.current = savedDocuments;
+  }, [savedDocuments]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (skipInitialSaveRef.current) {
+      skipInitialSaveRef.current = false;
+      return;
+    }
+    if (skipNextAutoSaveRef.current) {
+      skipNextAutoSaveRef.current = false;
+      return;
+    }
+    if (!autoSave) {
+      setSaveStatus((current) => (current === "error" ? current : "off"));
+      return;
+    }
+
+    setSaveError(null);
+    setSaveStatus("saving");
+    const timeout = window.setTimeout(() => {
+      const timestamp = new Date().toISOString();
+      const updatedDocument: SavedDocument = {
+        id: currentDocumentId,
+        title: deriveTitle(documents[mode], timestamp),
+        mode,
+        markdownContent: documents.markdown,
+        latexContent: documents.latex,
+        createdAt: savedDocumentsRef.current.find((document) => document.id === currentDocumentId)?.createdAt ?? timestamp,
+        updatedAt: timestamp,
+        ...(importedFileName ? { importedFileName } : {}),
+      };
+      const nextDocuments = savedDocumentsRef.current.map((document) => document.id === currentDocumentId ? updatedDocument : document);
+      try {
+        writeDocumentsStore({ version: 2, documents: nextDocuments, currentDocumentId, autoSave });
+        setSavedDocuments(nextDocuments);
+        setLastUpdated(timestamp);
+        setSaveStatus("saved");
+      } catch (error) {
+        setSaveStatus("error");
+        setSaveError(isQuotaError(error) ? "Local storage is full. Please export your file." : "Could not save locally.");
+      }
+    }, 1_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [autoSave, currentDocumentId, documents, importedFileName, isHydrated, mode]);
 
   useEffect(() => {
     function handleShortcut(event: KeyboardEvent) {
@@ -38,6 +147,8 @@ export function MarkdownEditor() {
   }, []);
 
   function setContent(value: string) {
+    setSaveError(null);
+    setSaveStatus(autoSave ? "unsaved" : "off");
     setDocuments((current) => ({ ...current, [mode]: value }));
   }
 
@@ -62,14 +173,158 @@ export function MarkdownEditor() {
     setPaletteOpen(false);
   }
 
+  function persistDocumentList(nextDocuments: SavedDocument[], nextCurrentDocumentId: string, errorMessage: string) {
+    try {
+      writeDocumentsStore({ version: 2, documents: nextDocuments, currentDocumentId: nextCurrentDocumentId, autoSave });
+      return true;
+    } catch (error) {
+      setSaveStatus("error");
+      setSaveError(isQuotaError(error) ? "Local storage is full. Please export your file." : errorMessage);
+      return false;
+    }
+  }
+
+  function openDocument(document: SavedDocument, documentList = savedDocuments) {
+    skipNextAutoSaveRef.current = true;
+    setCurrentDocumentId(document.id);
+    setMode(document.mode);
+    setDocuments({ markdown: document.markdownContent, latex: document.latexContent });
+    setImportedFileName(document.importedFileName);
+    setLastUpdated(document.updatedAt);
+    setSaveError(null);
+    setSaveStatus(autoSave ? "saved" : "off");
+    setDocumentsOpen(false);
+    persistDocumentList(documentList, document.id, "Could not open this saved document.");
+  }
+
+  function createNewDocument() {
+    const document = createDocument({ mode, blank: true });
+    const nextDocuments = [...savedDocuments, document];
+    if (!persistDocumentList(nextDocuments, document.id, "Could not create a new document.")) return;
+    setSavedDocuments(nextDocuments);
+    openDocument(document, nextDocuments);
+  }
+
+  function duplicateDocument(document: SavedDocument) {
+    const timestamp = new Date().toISOString();
+    const duplicate: SavedDocument = {
+      ...document,
+      id: createId(),
+      title: `${document.title} copy`,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const nextDocuments = [...savedDocuments, duplicate];
+    if (!persistDocumentList(nextDocuments, duplicate.id, "Could not duplicate this document.")) return;
+    setSavedDocuments(nextDocuments);
+    openDocument(duplicate, nextDocuments);
+  }
+
+  function deleteDocument(document: SavedDocument) {
+    if (savedDocuments.length === 1) return;
+    const nextDocuments = savedDocuments.filter((item) => item.id !== document.id);
+    const nextCurrent = document.id === currentDocumentId
+      ? [...nextDocuments].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]
+      : savedDocuments.find((item) => item.id === currentDocumentId) ?? nextDocuments[0];
+    if (!persistDocumentList(nextDocuments, nextCurrent.id, "Could not delete this document.")) return;
+    setSavedDocuments(nextDocuments);
+    if (document.id === currentDocumentId) openDocument(nextCurrent, nextDocuments);
+  }
+
+  function toggleAutoSave() {
+    const nextAutoSave = !autoSave;
+    setAutoSave(nextAutoSave);
+    setSaveError(null);
+    setSaveStatus(nextAutoSave ? "saving" : "off");
+
+    try {
+      writeDocumentsStore({
+        version: 2,
+        documents: savedDocuments,
+        currentDocumentId,
+        autoSave: nextAutoSave,
+      });
+    } catch (error) {
+      setSaveStatus("error");
+      setSaveError(isQuotaError(error) ? "Local storage is full. Please export your file." : "Could not save Auto Save setting.");
+    }
+  }
+
+  function resetDemo() {
+    const nextDocuments = { markdown: DEFAULT_MARKDOWN, latex: DEFAULT_LATEX };
+    const timestamp = new Date().toISOString();
+    const updatedDocument: SavedDocument = {
+      id: currentDocumentId,
+      title: deriveTitle(nextDocuments[mode], timestamp),
+      mode,
+      markdownContent: nextDocuments.markdown,
+      latexContent: nextDocuments.latex,
+      createdAt: savedDocuments.find((document) => document.id === currentDocumentId)?.createdAt ?? timestamp,
+      updatedAt: timestamp,
+    };
+    const nextSavedDocuments = savedDocuments.map((document) => document.id === currentDocumentId ? updatedDocument : document);
+    skipNextAutoSaveRef.current = true;
+    setDocuments(nextDocuments);
+    setSavedDocuments(nextSavedDocuments);
+    setImportedFileName(undefined);
+    setLastUpdated(timestamp);
+    setSaveError(null);
+    setSaveStatus(autoSave ? "saved" : "off");
+
+    try {
+      writeDocumentsStore({ version: 2, documents: nextSavedDocuments, currentDocumentId, autoSave });
+    } catch (error) {
+      setSaveStatus("error");
+      setSaveError(isQuotaError(error) ? "Local storage is full. Please export your file." : "Could not reset the local demo.");
+    }
+  }
+
+  async function handleFileImport(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const value = await file.text();
+      const extension = file.name.split(".").pop()?.toLowerCase();
+      if (!extension || !["md", "markdown", "tex", "txt"].includes(extension)) {
+        throw new Error("Unsupported file type");
+      }
+      const nextMode = extension === "tex" ? "latex" : extension === "md" || extension === "markdown" ? "markdown" : mode;
+      const importedDocument = createDocument({
+        mode: nextMode,
+        markdownContent: nextMode === "markdown" ? value : "",
+        latexContent: nextMode === "latex" ? value : "",
+        importedFileName: file.name,
+        blank: true,
+      });
+      const nextSavedDocuments = [...savedDocuments, importedDocument];
+      skipNextAutoSaveRef.current = true;
+      setMode(nextMode);
+      setDocuments({ markdown: importedDocument.markdownContent, latex: importedDocument.latexContent });
+      setSavedDocuments(nextSavedDocuments);
+      setCurrentDocumentId(importedDocument.id);
+      setImportedFileName(file.name);
+      setLastUpdated(importedDocument.updatedAt);
+      setSaveError(null);
+      setSaveStatus(autoSave ? "saved" : "off");
+      writeDocumentsStore({ version: 2, documents: nextSavedDocuments, currentDocumentId: importedDocument.id, autoSave });
+    } catch {
+      setSaveStatus("error");
+      setSaveError("Could not open this file. UTF-8 text files are supported.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
   function downloadSource() {
     const extension = mode === "markdown" ? "md" : "tex";
     const mimeType = mode === "markdown" ? "text/markdown" : "application/x-tex";
+    const baseName = importedFileName?.replace(/\.[^.]+$/, "") || "mdtex-document";
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `document.${extension}`;
+    anchor.download = `${baseName}.${extension}`;
     anchor.click();
     URL.revokeObjectURL(url);
   }
@@ -274,6 +529,14 @@ export function MarkdownEditor() {
   }
 
   const PreviewComponent = mode === "markdown" ? Preview : LatexPreview;
+  const statusText = saveError ?? {
+    unsaved: "Unsaved",
+    saving: "Saving...",
+    saved: "Saved locally",
+    off: "Auto Save Off",
+    error: "Local save error",
+  }[saveStatus];
+  const formattedLastUpdated = lastUpdated ? formatLocalDate(lastUpdated) : null;
 
   return (
     <main className={dark ? "dark" : ""}>
@@ -310,6 +573,40 @@ export function MarkdownEditor() {
           </div>
         </header>
 
+        <div className="document-bar">
+          <div className="document-meta" aria-live="polite">
+            {importedFileName && <strong title={importedFileName}>{importedFileName}</strong>}
+            <span className={`save-status ${saveStatus === "error" ? "error" : ""}`}>
+              <HardDrive size={12} />
+              {statusText}
+            </span>
+            {formattedLastUpdated && <time dateTime={lastUpdated ?? undefined}>{formattedLastUpdated}</time>}
+            <span className="local-save-note">Stored in this browser only</span>
+          </div>
+          <div className="document-actions">
+            <button className="management-button documents-button" onClick={() => setDocumentsOpen(true)} aria-label="Documents">
+              <Files size={14} /><span>Documents</span>
+            </button>
+            <button className="management-button" onClick={() => fileInputRef.current?.click()} aria-label="Open File">
+              <FolderOpen size={14} /><span>Open File</span>
+            </button>
+            <button
+              className={`auto-save-toggle ${autoSave ? "active" : ""}`}
+              onClick={toggleAutoSave}
+              role="switch"
+              aria-checked={autoSave}
+              aria-label={`Auto Save ${autoSave ? "ON" : "OFF"}`}
+            >
+              <span className="toggle-track"><span /></span>
+              <span>Auto Save {autoSave ? "ON" : "OFF"}</span>
+            </button>
+            <button className="management-button" onClick={resetDemo} aria-label="Reset demo">
+              <RotateCcw size={14} /><span>Reset demo</span>
+            </button>
+            <input ref={fileInputRef} type="file" accept=".md,.markdown,.tex,.txt,text/plain,text/markdown,application/x-tex" hidden onChange={handleFileImport} />
+          </div>
+        </div>
+
         <div className="mobile-tabs">
           <button className={activeTab === "write" ? "active" : ""} onClick={() => setActiveTab("write")}>
             <FileText size={16} /> Write
@@ -334,10 +631,6 @@ export function MarkdownEditor() {
               spellCheck={false}
               aria-label={`${mode} editor`}
             />
-            <div className="editor-footer">
-              <span>{stats.words} words</span><span>{stats.chars} characters</span>
-              <span className="footer-formula"><Sigma size={13} /> KaTeX enabled</span>
-            </div>
           </div>
 
           <div className={`preview-pane ${activeTab !== "preview" ? "mobile-hidden" : ""}`}>
@@ -359,6 +652,16 @@ export function MarkdownEditor() {
       </div>
 
       <CommandPalette mode={mode} open={paletteOpen} onClose={() => setPaletteOpen(false)} onSelect={insertCommand} />
+      <SavedDocuments
+        documents={savedDocuments}
+        currentDocumentId={currentDocumentId}
+        open={documentsOpen}
+        onClose={() => setDocumentsOpen(false)}
+        onCreate={createNewDocument}
+        onOpen={openDocument}
+        onDuplicate={duplicateDocument}
+        onDelete={deleteDocument}
+      />
     </main>
   );
 }
