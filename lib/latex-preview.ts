@@ -29,12 +29,24 @@ function convertTabular(body: string) {
   ].join("\n");
 }
 
+function formatPreviewDate(date = new Date()) {
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+}
+
 export function latexToMarkdown(source: string) {
   const title = source.match(/\\title\{([^}]*)\}/)?.[1] ?? "Untitled Report";
   const author = source.match(/\\author\{([^}]*)\}/)?.[1] ?? "";
-  const date = source.match(/\\date\{([^}]*)\}/)?.[1] ?? "";
+  const date = (source.match(/\\date\{([^}]*)\}/)?.[1] ?? "").replace(/\\today/g, formatPreviewDate());
 
   let output = source;
+  output = output.replace(/\\documentclass(?:\[[^\]]*\])?\{[^}]*\}/g, "");
+  output = output.replace(/\\usepackage(?:\[[^\]]*\])?\{[^}]*\}/g, "");
+  output = output.replace(/\\geometry\{[^}]*\}/g, "");
+  output = output.replace(/\\begin\{document\}|\\end\{document\}/g, "");
   output = output.replace(/\\title\{[^}]*\}|\\author\{[^}]*\}|\\date\{[^}]*\}/g, "");
   output = output.replace(/\\maketitle/g, `# ${title}\n\n${author ? `**${author}**  \n` : ""}${date}`);
   output = output.replace(/\\section\{([^}]*)\}/g, "## $1");
@@ -45,7 +57,8 @@ export function latexToMarkdown(source: string) {
     (_, body: string) => `\n$$\n\\begin{aligned}\n${body.trim()}\n\\end{aligned}\n$$\n`,
   );
   output = output.replace(/\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g, (_, body: string) => convertList(body, false));
-  output = output.replace(/\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g, (_, body: string) => convertList(body, true));
+  output = output.replace(/\\begin\{enumerate\}(?:\[[^\]]*\])?([\s\S]*?)\\end\{enumerate\}/g, (_, body: string) => convertList(body, true));
+  output = output.replace(/\\\[([\s\S]*?)\\\]/g, (_, body: string) => `\n$$\n${body.trim()}\n$$\n`);
   output = output.replace(
     /\\begin\{tabular\}(?:\{[^}]*\})?([\s\S]*?)\\end\{tabular\}/g,
     (_, body: string) => `\n${convertTabular(body)}\n`,

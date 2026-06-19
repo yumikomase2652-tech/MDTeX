@@ -35,51 +35,51 @@ $$\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}$$
 
 Keep exploring.`;
 
-export const DEFAULT_LATEX = String.raw`\title{基礎力学実験レポート}
-\author{理工学部 物理学科 山田 太郎}
-\date{2026年6月10日}
+export const DEFAULT_LATEX = String.raw`\documentclass[a4paper,11pt]{jsarticle}
+
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{enumitem}
+
+\geometry{margin=22mm}
+
+\title{レポートタイトル}
+\author{氏名}
+\date{\today}
+
+\begin{document}
 
 \maketitle
 
 \section{目的}
-ニュートンの運動方程式を用いて、力・質量・加速度の関係を確認する。
+本レポートでは，講義内容に基づき，基本的な理論と計算方法を整理する。
 
 \section{理論}
-物体に働く力と加速度の関係は次式で表される。
+基本式の例を以下に示す。
 
-\begin{equation}
-F = ma
-\end{equation}
+\[
+E = mc^2
+\]
 
-また、断面積 $A$ に力 $F$ が作用するとき、応力は次式となる。
+また，応力は次式で表される。
 
-\begin{equation}
+\[
 \sigma = \frac{F}{A}
-\end{equation}
-
-\subsection{測定条件}
-\begin{itemize}
-  \item 質量を一定にして力を変化させる
-  \item 加速度を3回測定して平均を求める
-\end{itemize}
+\]
 
 \section{計算}
-\begin{align}
-F_1 &= m a_1 \\
-F_2 &= m a_2
-\end{align}
+以下の条件で計算を行う。
 
-\begin{tabular}{|c|c|}
-\hline
-力 F [N] & 加速度 a [m/s^2] \\
-\hline
-1.0 & 0.52 \\
-2.0 & 1.03 \\
-\hline
-\end{tabular}
+\begin{enumerate}[label=(\alph*)]
+  \item 条件を整理する。
+  \item 必要な式を立てる。
+  \item 数値を代入して計算する。
+\end{enumerate}
 
 \section{考察}
-測定結果は理論値とおおむね一致した。摩擦力と測定誤差が差の主な要因だと考えられる。
+得られた結果について，仮定や誤差の影響を考察する。
 
 \section{結論}
-力と加速度の比例関係を確認し、運動方程式 $F=ma$ の妥当性を検証できた。`;
+本レポートでは，基本的な式を用いて現象を整理した。
+
+\end{document}`;

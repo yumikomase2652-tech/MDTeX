@@ -18,10 +18,10 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { CommandPalette } from "@/components/command-palette";
 import { LatexPreview } from "@/components/latex-preview";
-import { ModeSwitcher } from "@/components/mode-switcher";
 import { Preview } from "@/components/preview";
 import { SavedDocuments } from "@/components/saved-documents";
 import { DEFAULT_LATEX, DEFAULT_MARKDOWN, type EditorMode } from "@/lib/default-content";
+import { latexCompileCapability } from "@/lib/latex-compiler";
 import {
   createDocument,
   createId,
@@ -197,8 +197,8 @@ export function MarkdownEditor() {
     persistDocumentList(documentList, document.id, "Could not open this saved document.");
   }
 
-  function createNewDocument() {
-    const document = createDocument({ mode, blank: true });
+  function createNewDocument(documentMode: EditorMode) {
+    const document = createDocument({ mode: documentMode });
     const nextDocuments = [...savedDocuments, document];
     if (!persistDocumentList(nextDocuments, document.id, "Could not create a new document.")) return;
     setSavedDocuments(nextDocuments);
@@ -251,7 +251,11 @@ export function MarkdownEditor() {
   }
 
   function resetDemo() {
-    const nextDocuments = { markdown: DEFAULT_MARKDOWN, latex: DEFAULT_LATEX };
+    if (!window.confirm("Reset this document to the demo content? Your current edits will be replaced.")) return;
+
+    const nextDocuments = mode === "markdown"
+      ? { markdown: DEFAULT_MARKDOWN, latex: "" }
+      : { markdown: "", latex: DEFAULT_LATEX };
     const timestamp = new Date().toISOString();
     const updatedDocument: SavedDocument = {
       id: currentDocumentId,
@@ -346,7 +350,7 @@ export function MarkdownEditor() {
 
   async function printPdf() {
     const pdfDocument = pdfDocumentRef.current;
-    if (!pdfDocument || isExportingPdf) return;
+    if (mode !== "markdown" || !pdfDocument || isExportingPdf) return;
 
     setIsExportingPdf(true);
     const printFrame = document.createElement("iframe");
@@ -385,7 +389,7 @@ export function MarkdownEditor() {
 
       const printStyle = printDocument.createElement("style");
       printStyle.textContent = `
-        @page { size: A4 portrait; margin: 18mm; }
+        @page { size: A4 portrait; margin: 22mm; }
 
         html, body, main, .print-root, .print-document {
           overflow: visible !important;
@@ -396,9 +400,6 @@ export function MarkdownEditor() {
           padding: 0;
           background: #ffffff !important;
           color: #111111 !important;
-          font-family: "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
-          font-size: 9.75pt;
-          line-height: 1.58;
           print-color-adjust: exact;
           -webkit-print-color-adjust: exact;
         }
@@ -413,25 +414,39 @@ export function MarkdownEditor() {
         .print-document {
           width: 100%;
           background: #ffffff !important;
-          font-family: "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
-          font-size: 9.75pt;
-          line-height: 1.58;
         }
-        h1, h2, h3, h4, h5, h6 {
+        .print-root,
+        .print-content,
+        .markdown-print-content {
+          font-family: "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
+          font-size: 10.5pt !important;
+          line-height: 1.4 !important;
+        }
+        .markdown-print-content p,
+        .markdown-print-content li {
+          font-size: 10.5pt !important;
+          line-height: 1.4 !important;
+        }
+        .markdown-print-content h1,
+        .markdown-print-content h2,
+        .markdown-print-content h3,
+        .markdown-print-content h4,
+        .markdown-print-content h5,
+        .markdown-print-content h6 {
           break-after: avoid-page;
           page-break-after: avoid;
           font-family: inherit;
           font-weight: 600;
           line-height: 1.35;
         }
-        h1 { margin: 0 0 5mm; font-size: 15pt; }
-        h2 { margin: 7mm 0 2mm; font-size: 13pt; }
-        h3 { margin: 5mm 0 2mm; font-size: 11.5pt; }
-        h4 { margin: 4mm 0 1.5mm; font-size: 10.5pt; }
-        h5 { margin: 3.5mm 0 1.5mm; font-size: 10pt; font-weight: 700; }
-        h6 { margin: 3mm 0 1.5mm; font-size: 9.5pt; font-weight: 700; }
-        p { margin: 0 0 3.5mm; orphans: 3; widows: 3; }
-        ul, ol { margin: 0 0 5mm; padding-left: 7mm; }
+        .markdown-print-content h1 { margin: 0 0 4mm; font-size: 15pt !important; }
+        .markdown-print-content h2 { margin: 6mm 0 1.5mm; font-size: 13pt !important; }
+        .markdown-print-content h3 { margin: 4mm 0 1.5mm; font-size: 11.5pt !important; }
+        .markdown-print-content h4 { margin: 3mm 0 1mm; font-size: 10.5pt !important; font-weight: 700; }
+        .markdown-print-content h5,
+        .markdown-print-content h6 { margin: 3mm 0 1mm; font-size: 10.5pt !important; font-weight: 700; }
+        p { margin: 0 0 0.45em; orphans: 3; widows: 3; }
+        ul, ol { margin: 0 0 3mm; padding-left: 7mm; }
         li { margin: 1.5mm 0; }
         img { display: block; max-width: 100% !important; max-height: 230mm; margin: 6mm auto; object-fit: contain; }
 
@@ -504,7 +519,7 @@ export function MarkdownEditor() {
       printDocument.head.appendChild(printStyle);
 
       const printArticle = printDocument.createElement("article");
-      printArticle.className = "print-document";
+      printArticle.className = "print-root print-document";
       printArticle.innerHTML = pdfDocument.innerHTML;
       printDocument.body.appendChild(printArticle);
 
@@ -529,6 +544,7 @@ export function MarkdownEditor() {
   }
 
   const PreviewComponent = mode === "markdown" ? Preview : LatexPreview;
+  const previewClassName = mode === "markdown" ? "preview-content markdown-body" : undefined;
   const statusText = saveError ?? {
     unsaved: "Unsaved",
     saving: "Saving...",
@@ -550,7 +566,7 @@ export function MarkdownEditor() {
             </div>
           </div>
 
-          <ModeSwitcher mode={mode} onChange={setMode} />
+          <div className="document-type-label"><FileText size={14} />{mode === "markdown" ? "Markdown Editor" : "LaTeX Editor"}</div>
 
           <div className="top-actions">
             <button className="command-button" onClick={() => setPaletteOpen(true)} aria-label="Commands">
@@ -565,10 +581,17 @@ export function MarkdownEditor() {
             <button className="download-button" onClick={downloadSource} aria-label={`Export .${mode === "markdown" ? "md" : "tex"}`}>
               <Download size={15} /><span>Export .{mode === "markdown" ? "md" : "tex"}</span>
             </button>
-            <button className="pdf-button" onClick={printPdf} disabled={isExportingPdf} aria-label="Export PDF">
-              {isExportingPdf ? <Sparkles size={15} /> : <FileDown size={15} />}
-              <span>{isExportingPdf ? "Preparing print" : "Export PDF"}</span>
-            </button>
+            {mode === "markdown" ? (
+              <button className="pdf-button" onClick={printPdf} disabled={isExportingPdf} aria-label="Export PDF">
+                {isExportingPdf ? <Sparkles size={15} /> : <FileDown size={15} />}
+                <span>{isExportingPdf ? "Preparing print" : "Export PDF"}</span>
+              </button>
+            ) : (
+              <button className="pdf-button compile-button" disabled title={latexCompileCapability.message} aria-label="Compile PDF (Coming soon)">
+                <FileDown size={15} />
+                <span>Compile PDF · Coming soon</span>
+              </button>
+            )}
             <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={handleImageUpload} />
           </div>
         </header>
@@ -620,9 +643,6 @@ export function MarkdownEditor() {
           <div className={`editor-pane ${activeTab !== "write" ? "mobile-hidden" : ""}`}>
             <div className="pane-header">
               <div className="pane-title"><span className="status-dot" />{mode === "markdown" ? "Markdown" : "LaTeX"} source</div>
-              <button className="inline-command-button" onClick={() => setPaletteOpen(true)}>
-                <Command size={14} /> Insert command
-              </button>
             </div>
             <textarea
               ref={textareaRef}
@@ -636,20 +656,30 @@ export function MarkdownEditor() {
           <div className={`preview-pane ${activeTab !== "preview" ? "mobile-hidden" : ""}`}>
             <div className="pane-header">
               <div className="pane-title"><Eye size={15} />{mode === "markdown" ? "Markdown" : "LaTeX"} preview</div>
-              <span className="live-badge">Live</span>
+              <div className="preview-settings">
+                {mode === "latex" && <span className="experimental-badge" title={latexCompileCapability.message}>Approximate preview</span>}
+                <span className="live-badge">Live</span>
+              </div>
             </div>
-            <PreviewComponent content={content} />
+            {mode === "latex" && <div className="latex-preview-notice">{latexCompileCapability.message}</div>}
+            <PreviewComponent content={content} className={previewClassName} />
           </div>
         </section>
 
-        <div className="print-note">PDF保存時は、ブラウザの印刷設定でヘッダーとフッターをオフにすると綺麗に出力できます。</div>
-      </div>
-
-      <div className="pdf-export-host" aria-hidden="true">
-        <div ref={pdfDocumentRef}>
-          <PreviewComponent content={content} className="pdf-document" />
+        <div className="print-note">
+          {mode === "markdown"
+            ? "PDF保存時は印刷倍率100%を推奨します。ブラウザのヘッダーとフッターをオフにしてください。"
+            : "正確なLaTeX PDF出力にはCompile PDFを使用します（準備中）。"}
         </div>
       </div>
+
+      {mode === "markdown" && (
+        <div className="pdf-export-host" aria-hidden="true">
+          <div ref={pdfDocumentRef}>
+            <Preview content={content} className="pdf-document print-content markdown-print-content" />
+          </div>
+        </div>
+      )}
 
       <CommandPalette mode={mode} open={paletteOpen} onClose={() => setPaletteOpen(false)} onSelect={insertCommand} />
       <SavedDocuments

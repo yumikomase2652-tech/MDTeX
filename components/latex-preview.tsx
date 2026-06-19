@@ -7,5 +7,5 @@ type LatexPreviewProps = {
 };
 
 export function LatexPreview({ content, className }: LatexPreviewProps) {
-  return <Preview content={latexToMarkdown(content)} className={className} />;
+  return <Preview content={latexToMarkdown(content)} className={className ?? "preview-content markdown-body latex-preview"} />;
 }

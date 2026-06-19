@@ -8,7 +8,7 @@ type PreviewProps = {
   className?: string;
 };
 
-export function Preview({ content, className = "markdown-body" }: PreviewProps) {
+export function Preview({ content, className = "preview-content markdown-body" }: PreviewProps) {
   return (
     <article className={className}>
       <ReactMarkdown

@@ -2,7 +2,6 @@ import { DEFAULT_LATEX, DEFAULT_MARKDOWN, type EditorMode } from "@/lib/default-
 
 export const DOCUMENTS_STORAGE_KEY = "mdtex-saved-documents-v2";
 export const LEGACY_STORAGE_KEY = "mdtex-local-document-v1";
-
 export type SavedDocument = {
   id: string;
   title: string;
@@ -37,8 +36,9 @@ export function createId() {
 }
 
 export function deriveTitle(content: string, updatedAt: string) {
+  const latexTitle = content.match(/\\title\{([^}]*)\}/)?.[1]?.trim();
   const firstLine = content.split(/\r?\n/).find((line) => line.trim())?.trim();
-  const cleaned = firstLine
+  const cleaned = (latexTitle || firstLine)
     ?.replace(/^#{1,6}\s*/, "")
     .replace(/^\\(?:title|section|subsection)\{(.+)\}$/, "$1")
     .replace(/^[>*-]\s*/, "")
@@ -64,8 +64,8 @@ export function createDocument(options?: {
 }) {
   const timestamp = new Date().toISOString();
   const mode = options?.mode ?? "markdown";
-  const markdownContent = options?.markdownContent ?? (options?.blank ? "" : DEFAULT_MARKDOWN);
-  const latexContent = options?.latexContent ?? (options?.blank ? "" : DEFAULT_LATEX);
+  const markdownContent = options?.markdownContent ?? (mode === "markdown" && !options?.blank ? DEFAULT_MARKDOWN : "");
+  const latexContent = options?.latexContent ?? (mode === "latex" && !options?.blank ? DEFAULT_LATEX : "");
   const activeContent = mode === "markdown" ? markdownContent : latexContent;
   return {
     id: createId(),
@@ -91,6 +91,7 @@ export function readDocumentsStore(): DocumentsStore {
     ) {
       return {
         version: 2,
+        // Older stores may contain markdownLayout. It is intentionally ignored.
         documents: parsed.documents,
         currentDocumentId: parsed.currentDocumentId,
         autoSave: parsed.autoSave !== false,

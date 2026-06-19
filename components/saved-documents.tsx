@@ -2,13 +2,14 @@
 
 import { Copy, FilePlus2, FolderOpen, Trash2, X } from "lucide-react";
 import { formatLocalDate, type SavedDocument } from "@/lib/document-storage";
+import type { EditorMode } from "@/lib/default-content";
 
 type SavedDocumentsProps = {
   documents: SavedDocument[];
   currentDocumentId: string;
   open: boolean;
   onClose: () => void;
-  onCreate: () => void;
+  onCreate: (mode: EditorMode) => void;
   onOpen: (document: SavedDocument) => void;
   onDuplicate: (document: SavedDocument) => void;
   onDelete: (document: SavedDocument) => void;
@@ -38,7 +39,10 @@ export function SavedDocuments({
         </header>
 
         <div className="documents-toolbar">
-          <button className="new-document-button" onClick={onCreate}><FilePlus2 size={15} />New Document</button>
+          <div className="new-document-actions">
+            <button className="new-document-button" onClick={() => onCreate("markdown")}><FilePlus2 size={15} />New Markdown</button>
+            <button className="new-document-button secondary" onClick={() => onCreate("latex")}><FilePlus2 size={15} />New LaTeX</button>
+          </div>
           <span>{documents.length} document{documents.length === 1 ? "" : "s"}</span>
         </div>
 

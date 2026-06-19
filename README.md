@@ -23,6 +23,8 @@ MDTeXは、Markdown・LaTeX数式・PDF出力に対応した、ブラウザで�
 - ダークモード・スマホ対応
 - ログイン・アカウント・DB・クラウド保存不要
 
+> 現在のLaTeX Previewは簡易表示で、`documentclass`の文字サイズを再現しません。Compile PDFは準備中です。正確な出力には、書き出した`.tex`ファイルをTeX環境でコンパイルしてください。
+
 ## Screenshots
 
 スクリーンショットは今後追加予定です。
@@ -79,9 +81,10 @@ MDTeXは以下の形式で書き出せます。
 
 - Markdown (`.md`)
 - LaTeX (`.tex`)
-- ブラウザの印刷ダイアログを利用したPDF
+- Markdown文書: ブラウザの印刷ダイアログを利用したPDF
+- LaTeX文書: `.tex`を書き出してTeX環境でコンパイル（アプリ内Compile PDFは準備中）
 
-PDF出力はテキストを選択可能な状態で保ち、KaTeX数式もブラウザ印刷で可能な限りきれいに出力します。
+MarkdownのPDF出力はテキストを選択可能な状態で保ち、KaTeX数式もブラウザ印刷で可能な限りきれいに出力します。
 
 ## Local Storage
 
@@ -100,6 +103,7 @@ PDF出力はテキストを選択可能な状態で保ち、KaTeX数式もブラ
 - レポートテンプレート機能
 - 数式スニペット・コマンドの拡充
 - PWA機能の強化
+- SwiftLaTeXなどを利用したブラウザ内LaTeX PDFコンパイル
 
 ## License
 
