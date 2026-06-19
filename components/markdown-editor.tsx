@@ -17,11 +17,11 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CommandPalette } from "@/components/command-palette";
-import { LatexPreview } from "@/components/latex-preview";
+import { LatexOutput } from "@/components/latex-output";
 import { Preview } from "@/components/preview";
 import { SavedDocuments } from "@/components/saved-documents";
 import { DEFAULT_LATEX, DEFAULT_MARKDOWN, type EditorMode } from "@/lib/default-content";
-import { latexCompileCapability } from "@/lib/latex-compiler";
+import { compileLatex, getLatexCompileError, latexCompileCapability } from "@/lib/latex-compiler";
 import {
   createDocument,
   createId,
@@ -56,6 +56,12 @@ export function MarkdownEditor() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isCompilingLatex, setIsCompilingLatex] = useState(false);
+  const [latexPdfUrl, setLatexPdfUrl] = useState<string | null>(null);
+  const [latexLog, setLatexLog] = useState("");
+  const [latexCompileError, setLatexCompileError] = useState<string | null>(null);
+  const [latexProgressMessage, setLatexProgressMessage] = useState<string | null>(null);
+  const [latexOutputView, setLatexOutputView] = useState<"pdf" | "log">("pdf");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +69,8 @@ export function MarkdownEditor() {
   const skipInitialSaveRef = useRef(true);
   const skipNextAutoSaveRef = useRef(false);
   const savedDocumentsRef = useRef<SavedDocument[]>([]);
+  const latexPdfUrlRef = useRef<string | null>(null);
+  const latexCompileRunRef = useRef(0);
   const content = documents[mode];
 
   useEffect(() => {
@@ -90,6 +98,23 @@ export function MarkdownEditor() {
   useEffect(() => {
     savedDocumentsRef.current = savedDocuments;
   }, [savedDocuments]);
+
+  useEffect(() => {
+    return () => {
+      if (latexPdfUrlRef.current) URL.revokeObjectURL(latexPdfUrlRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    latexCompileRunRef.current += 1;
+    if (latexPdfUrlRef.current) URL.revokeObjectURL(latexPdfUrlRef.current);
+    latexPdfUrlRef.current = null;
+    setLatexPdfUrl(null);
+    setLatexLog("");
+    setLatexCompileError(null);
+    setLatexProgressMessage(null);
+    setLatexOutputView("pdf");
+  }, [currentDocumentId]);
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -149,6 +174,14 @@ export function MarkdownEditor() {
   function setContent(value: string) {
     setSaveError(null);
     setSaveStatus(autoSave ? "unsaved" : "off");
+    if (mode === "latex") {
+      latexCompileRunRef.current += 1;
+      if (latexPdfUrlRef.current) URL.revokeObjectURL(latexPdfUrlRef.current);
+      latexPdfUrlRef.current = null;
+      setLatexPdfUrl(null);
+      setLatexCompileError(null);
+      setLatexProgressMessage("Source changed. Compile again to update the PDF.");
+    }
     setDocuments((current) => ({ ...current, [mode]: value }));
   }
 
@@ -268,6 +301,13 @@ export function MarkdownEditor() {
     };
     const nextSavedDocuments = savedDocuments.map((document) => document.id === currentDocumentId ? updatedDocument : document);
     skipNextAutoSaveRef.current = true;
+    latexCompileRunRef.current += 1;
+    if (latexPdfUrlRef.current) URL.revokeObjectURL(latexPdfUrlRef.current);
+    latexPdfUrlRef.current = null;
+    setLatexPdfUrl(null);
+    setLatexLog("");
+    setLatexCompileError(null);
+    setLatexProgressMessage(null);
     setDocuments(nextDocuments);
     setSavedDocuments(nextSavedDocuments);
     setImportedFileName(undefined);
@@ -331,6 +371,51 @@ export function MarkdownEditor() {
     anchor.download = `${baseName}.${extension}`;
     anchor.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function compileLatexPdf() {
+    if (mode !== "latex" || isCompilingLatex) return;
+    const runId = ++latexCompileRunRef.current;
+    setIsCompilingLatex(true);
+    setLatexCompileError(null);
+    setLatexLog("");
+    setLatexProgressMessage("Loading SwiftLaTeX engines...");
+    setLatexOutputView("pdf");
+
+    try {
+      const result = await compileLatex(content, (progress) => {
+        if (latexCompileRunRef.current !== runId) return;
+        setLatexProgressMessage(progress.message);
+        setLatexLog((current) => `${current}${current ? "\n" : ""}${progress.message}`);
+      });
+      if (latexCompileRunRef.current !== runId) return;
+
+      if (latexPdfUrlRef.current) URL.revokeObjectURL(latexPdfUrlRef.current);
+      const url = URL.createObjectURL(result.pdf);
+      latexPdfUrlRef.current = url;
+      setLatexPdfUrl(url);
+      setLatexLog(`${result.log}\n\nCompleted in ${(result.durationMs / 1_000).toFixed(1)} seconds.`);
+      setLatexProgressMessage(null);
+      setLatexOutputView("pdf");
+    } catch (error) {
+      if (latexCompileRunRef.current !== runId) return;
+      const failure = getLatexCompileError(error);
+      setLatexCompileError(failure.message);
+      setLatexLog(failure.log);
+      setLatexProgressMessage(null);
+      setLatexOutputView("log");
+    } finally {
+      setIsCompilingLatex(false);
+    }
+  }
+
+  function downloadLatexPdf() {
+    if (!latexPdfUrl) return;
+    const baseName = importedFileName?.replace(/\.[^.]+$/, "") || "mdtex-document";
+    const anchor = document.createElement("a");
+    anchor.href = latexPdfUrl;
+    anchor.download = `${baseName}.pdf`;
+    anchor.click();
   }
 
   function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -543,8 +628,6 @@ export function MarkdownEditor() {
     }
   }
 
-  const PreviewComponent = mode === "markdown" ? Preview : LatexPreview;
-  const previewClassName = mode === "markdown" ? "preview-content markdown-body" : undefined;
   const statusText = saveError ?? {
     unsaved: "Unsaved",
     saving: "Saving...",
@@ -562,7 +645,7 @@ export function MarkdownEditor() {
             <div className="brand-mark"><Sigma size={18} strokeWidth={2.4} /></div>
             <div>
               <div className="brand-name">MDTeX</div>
-              <div className="brand-subtitle">Scientific report editor · v2</div>
+              <div className="brand-subtitle">Scientific report editor · v3</div>
             </div>
           </div>
 
@@ -587,10 +670,17 @@ export function MarkdownEditor() {
                 <span>{isExportingPdf ? "Preparing print" : "Export PDF"}</span>
               </button>
             ) : (
-              <button className="pdf-button compile-button" disabled title={latexCompileCapability.message} aria-label="Compile PDF (Coming soon)">
-                <FileDown size={15} />
-                <span>Compile PDF · Coming soon</span>
-              </button>
+              <>
+                {latexPdfUrl && (
+                  <button className="download-button" onClick={downloadLatexPdf} aria-label="Download PDF">
+                    <Download size={15} /><span>Download PDF</span>
+                  </button>
+                )}
+                <button className="pdf-button compile-button" onClick={compileLatexPdf} disabled={isCompilingLatex} title={latexCompileCapability.message} aria-label="Compile PDF">
+                  {isCompilingLatex ? <Sparkles size={15} /> : <FileDown size={15} />}
+                  <span>{isCompilingLatex ? "Compiling..." : "Compile PDF"}</span>
+                </button>
+              </>
             )}
             <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={handleImageUpload} />
           </div>
@@ -632,10 +722,10 @@ export function MarkdownEditor() {
 
         <div className="mobile-tabs">
           <button className={activeTab === "write" ? "active" : ""} onClick={() => setActiveTab("write")}>
-            <FileText size={16} /> Write
+            <FileText size={16} /> {mode === "latex" ? "Source" : "Write"}
           </button>
           <button className={activeTab === "preview" ? "active" : ""} onClick={() => setActiveTab("preview")}>
-            <Eye size={16} /> Preview
+            <Eye size={16} /> {mode === "latex" ? "PDF / Log" : "Preview"}
           </button>
         </div>
 
@@ -655,21 +745,37 @@ export function MarkdownEditor() {
 
           <div className={`preview-pane ${activeTab !== "preview" ? "mobile-hidden" : ""}`}>
             <div className="pane-header">
-              <div className="pane-title"><Eye size={15} />{mode === "markdown" ? "Markdown" : "LaTeX"} preview</div>
+              <div className="pane-title"><Eye size={15} />{mode === "markdown" ? "Markdown preview" : "LaTeX output"}</div>
               <div className="preview-settings">
-                {mode === "latex" && <span className="experimental-badge" title={latexCompileCapability.message}>Approximate preview</span>}
-                <span className="live-badge">Live</span>
+                {mode === "latex" ? (
+                  <span className="experimental-badge" title={latexCompileCapability.message}>LaTeX compile is experimental</span>
+                ) : (
+                  <span className="live-badge">Live</span>
+                )}
               </div>
             </div>
-            {mode === "latex" && <div className="latex-preview-notice">{latexCompileCapability.message}</div>}
-            <PreviewComponent content={content} className={previewClassName} />
+            {mode === "markdown" ? (
+              <Preview content={content} className="preview-content markdown-body" />
+            ) : (
+              <LatexOutput
+                pdfUrl={latexPdfUrl}
+                log={latexLog}
+                error={latexCompileError}
+                progressMessage={latexProgressMessage}
+                compiling={isCompilingLatex}
+                activeView={latexOutputView}
+                onViewChange={setLatexOutputView}
+                onCompile={compileLatexPdf}
+                onDownload={downloadLatexPdf}
+              />
+            )}
           </div>
         </section>
 
         <div className="print-note">
           {mode === "markdown"
             ? "PDF保存時は印刷倍率100%を推奨します。ブラウザのヘッダーとフッターをオフにしてください。"
-            : "正確なLaTeX PDF出力にはCompile PDFを使用します（準備中）。"}
+            : "Experimental: コンパイルはブラウザ内で実行され、必要なTeXファイルのみSwiftLaTeXサービスから取得します。"}
         </div>
       </div>
 

@@ -35,11 +35,15 @@ $$\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}$$
 
 Keep exploring.`;
 
-export const DEFAULT_LATEX = String.raw`\documentclass[a4paper,11pt]{jsarticle}
+export const DEFAULT_LATEX = String.raw`\documentclass[a4paper,11pt]{article}
 
 \usepackage{amsmath,amssymb}
 \usepackage{geometry}
 \usepackage{enumitem}
+\usepackage{xeCJK}
+
+% MDTeXに同梱された日本語フォントです。
+\setCJKmainfont{HaranoAjiMincho-Regular.otf}
 
 \geometry{margin=22mm}
 

@@ -11,7 +11,7 @@ MDTeXは、Markdown・LaTeX数式・PDF出力に対応した、ブラウザで�
 ## Features
 
 - 見出し・リスト・表・画像・コードに対応したMarkdownモード
-- レポート向けの簡易プレビューを備えたLaTeXモード
+- SwiftLaTeX（XeTeX + dvipdfmx）による実験的なブラウザ内LaTeX PDFコンパイル
 - KaTeXによる高速な数式レンダリング
 - インライン数式（`$...$`）とブロック数式（`$$...$$`）
 - ブラウザ印刷を利用した、テキスト選択可能なPDF出力
@@ -23,7 +23,7 @@ MDTeXは、Markdown・LaTeX数式・PDF出力に対応した、ブラウザで�
 - ダークモード・スマホ対応
 - ログイン・アカウント・DB・クラウド保存不要
 
-> 現在のLaTeX Previewは簡易表示で、`documentclass`の文字サイズを再現しません。Compile PDFは準備中です。正確な出力には、書き出した`.tex`ファイルをTeX環境でコンパイルしてください。
+> LaTeX compile is experimental. 初回はWASMとTeX Liveファイルの読み込みに時間がかかります。LaTeXソースはブラウザ内で処理され、サーバーへ送信されません。
 
 ## Screenshots
 
@@ -52,6 +52,7 @@ Markdownは手軽に文章を書ける一方で、数式を多く含む文書に
 - TypeScript
 - Tailwind CSS
 - KaTeX
+- SwiftLaTeX / WebAssembly
 
 ## Getting Started
 
@@ -82,9 +83,45 @@ MDTeXは以下の形式で書き出せます。
 - Markdown (`.md`)
 - LaTeX (`.tex`)
 - Markdown文書: ブラウザの印刷ダイアログを利用したPDF
-- LaTeX文書: `.tex`を書き出してTeX環境でコンパイル（アプリ内Compile PDFは準備中）
+- LaTeX文書: XeTeX + dvipdfmxによるブラウザ内PDFコンパイルとダウンロード
 
 MarkdownのPDF出力はテキストを選択可能な状態で保ち、KaTeX数式もブラウザ印刷で可能な限りきれいに出力します。
+
+### Experimental LaTeX Compile
+
+LaTeXモードの`Compile PDF`は、`public/swiftlatex`から配信されるSwiftLaTeXのXeTeX/Dvipdfmx WebAssembly Workerを使用します。
+
+1. `.tex`ソースをブラウザ内のXeTeXでXDVへコンパイル
+2. XDVをブラウザ内のdvipdfmxでPDFへ変換
+3. PDF Blobをアプリ内でプレビューし、`Download PDF`で保存
+
+LaTeXソースそのものは外部へ送信されません。ただし、必要なTeX Liveクラス・パッケージ・フォントは設定されたTexlive-OnDemandサービスからオンデマンド取得します。そのため初回コンパイルにはインターネット接続が必要です。
+
+使用するエンドポイントはVercelまたは`.env.local`で設定できます。
+
+```bash
+NEXT_PUBLIC_SWIFTLATEX_TEXLIVE_ENDPOINT=https://your-texlive-server.example.com/
+```
+
+未設定時はTeXlyre公開設定の`https://texlive.texlyre.org/`を使用します。ただし、2026-06-19の調査時点では公開SwiftLaTeX/TeXlyreパッケージサービスが停止しており、デフォルト設定のコンパイルは失敗する可能性があります。確実な運用には[SwiftLaTeX Texlive-OnDemand](https://github.com/SwiftLaTeX/Texlive-Ondemand)のセルフホストが必要です。
+
+日本語の初期テンプレートは`article + xeCJK`を使用します。日本語フォントのHarano Aji MinchoはSIL OFLに基づいてアプリへ同梱し、外部フォントサービスには依存しません。現在の制限は次のとおりです。
+
+- `jsarticle`、pLaTeX、upLaTeXの完全互換は保証しません
+- SwiftLaTeXサービスにないクラス・パッケージ・フォントはコンパイルできません
+- 日本語の禁則処理やフォント品質はデスクトップTeX環境と異なる場合があります
+- 初回のWASM/パッケージ読み込みは重く、モバイルでは時間がかかる場合があります
+- コンパイル失敗時は`Log`タブにXeTeXログと検出できた行番号を表示します
+- TeX Liveサービスへ接続できない場合、WASMが読み込めてもクラス・パッケージ取得で失敗します
+
+VercelではWASMとWorkerを通常の静的ファイルとして配信するため、サーバー側LaTeX環境は不要です。
+
+#### Engine research
+
+- SwiftLaTeX: 約4MBのXeTeX/dvipdfmx WASMを同梱できるため採用。ただしTeX Liveファイルサーバーが別途必要
+- Tectonic: 公式プロジェクトにブラウザ配布用の安定したJavaScript/WASM SDKがないため今回は不採用
+- TeXlyre BusyTeX: 完全ブラウザ実行は可能だが、v1.1.1の公式資産が圧縮状態で約504MBあり、MDTeX/Vercelへの同梱には過大なため不採用
+- LaTeX.js: HTML生成が中心で、正確なPDFコンパイル用途ではないため不採用
 
 ## Local Storage
 
@@ -103,8 +140,9 @@ MarkdownのPDF出力はテキストを選択可能な状態で保ち、KaTeX数�
 - レポートテンプレート機能
 - 数式スニペット・コマンドの拡充
 - PWA機能の強化
-- SwiftLaTeXなどを利用したブラウザ内LaTeX PDFコンパイル
+- `jsarticle` / upLaTeX相当の日本語組版対応強化
+- TeX Live資産のキャッシュとオフラインコンパイル改善
 
 ## License
 
-MIT
+MDTeX本体はMITライセンスです。`public/swiftlatex`の第三者エンジン資産はSwiftLaTeXのライセンスに従います。詳細は`public/swiftlatex/NOTICE.txt`と`LICENSE.txt`を参照してください。

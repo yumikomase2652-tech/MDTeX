@@ -585,24 +585,6 @@ button {
   text-align: center;
 }
 
-.latex-preview {
-  font-family: "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.latex-preview h1 {
-  font-size: 1.55em;
-}
-
-.latex-preview h2 {
-  font-size: 1.3em;
-}
-
-.latex-preview h3 {
-  font-size: 1.15em;
-}
-
 .preview-settings {
   display: flex;
   align-items: center;
@@ -622,14 +604,162 @@ button {
   font-weight: 700;
 }
 
-.latex-preview-notice {
+.latex-output {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  background: var(--panel);
+}
+
+.latex-output-tabs {
+  display: flex;
+  min-height: 39px;
   flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
   border-bottom: 1px solid var(--line);
-  background: var(--accent-soft);
+  padding: 5px 10px;
+}
+
+.latex-output-tabs button {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  padding: 0 9px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.latex-output-tabs button.active {
+  border-color: var(--line);
+  background: var(--editor);
   color: var(--ink);
-  padding: 8px 18px;
+}
+
+.latex-output-tabs .latex-download-inline {
+  margin-left: auto;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.latex-pdf-view,
+.latex-log-view {
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+.latex-pdf-view {
+  display: flex;
+  background: #525659;
+}
+
+.latex-pdf-view iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  background: #ffffff;
+}
+
+.latex-output-empty {
+  display: flex;
+  max-width: 390px;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  color: #ffffff;
+  padding: 28px;
+  text-align: center;
+  flex-direction: column;
+}
+
+.latex-output-empty strong {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.latex-output-empty p {
+  margin: 7px 0 15px;
+  color: rgb(255 255 255 / 75%);
   font-size: 10px;
-  line-height: 1.45;
+  line-height: 1.6;
+}
+
+.latex-output-empty button {
+  height: 34px;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  background: var(--accent);
+  color: #ffffff;
+  padding: 0 14px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.latex-log-view {
+  overflow: auto;
+  padding: 16px;
+}
+
+.latex-error-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #fca5a5;
+  border-radius: 7px;
+  background: #fef2f2;
+  color: #991b1b;
+  padding: 10px 12px;
+  font-size: 10px;
+}
+
+.latex-error-list {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.latex-error-list > div {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding: 6px 2px;
+}
+
+.latex-error-list span {
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.latex-error-list p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.latex-log-view pre {
+  margin: 0;
+  overflow: visible;
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.dark .latex-error-heading {
+  border-color: #7f1d1d;
+  background: #450a0a;
+  color: #fecaca;
 }
 
 .markdown-body img {
