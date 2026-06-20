@@ -3,36 +3,36 @@ import { PwaRegister } from "@/components/pwa-register";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
-const description = "Markdown + LaTeX math + PDF export editor";
+const description = "Markdownで書けるLaTeX風レポート作成アプリ";
 
 export const metadata: Metadata = {
-  title: "MDTeX",
+  title: "ReportMD",
   description,
   manifest: "/manifest.webmanifest",
-  applicationName: "MDTeX",
+  applicationName: "ReportMD",
   icons: {
     icon: [
+      { url: "/icon.png", type: "image/png" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-      { url: "/favicon.ico", type: "image/x-icon" },
     ],
-    shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
+    shortcut: [{ url: "/icon.png", type: "image/png" }],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
-    title: "MDTeX",
+    title: "ReportMD",
     statusBarStyle: "default",
   },
   openGraph: {
-    title: "MDTeX",
+    title: "ReportMD",
     description,
-    siteName: "MDTeX",
+    siteName: "ReportMD",
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "MDTeX",
+    title: "ReportMD",
     description,
   },
 };
@@ -51,7 +51,7 @@ export default function RootLayout({
     <html lang="ja">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-title" content="MDTeX" />
+        <meta name="apple-mobile-web-app-title" content="ReportMD" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body>

@@ -1,49 +1,109 @@
-# MDTeX
+# ReportMD
 
-MDTeXは、Markdown・LaTeX数式・PDF出力に対応した、ブラウザで使えるレポート作成エディタです。
+ReportMDは、Markdownで書けるLaTeX風レポート作成アプリです。
 
-アカウント登録やクラウド保存を使わず、技術メモや理系レポートを作成できます。数式はKaTeXで素早くプレビューし、完成した文書はMarkdown・LaTeX・PDFとして書き出せます。
-
-## Live Demo
-
-[https://mdtex-app.vercel.app](https://mdtex-app.vercel.app)
+環境構築やログインをせず、ブラウザだけで数式・化学式・図表・グラフを含む学生レポートを作成し、A4 PDFとして保存できます。
 
 ## Features
 
-- 見出し・リスト・表・画像・コードに対応したMarkdownモード
-- SwiftLaTeX（XeTeX + dvipdfmx）による実験的なブラウザ内LaTeX PDFコンパイル
-- KaTeXによる高速な数式レンダリング
-- インライン数式（`$...$`）とブロック数式（`$$...$$`）
-- ブラウザ印刷を利用した、テキスト選択可能なPDF出力
-- Markdown（`.md`）・LaTeX（`.tex`）の書き出し
-- `.md`・`.markdown`・`.tex`・`.txt`ファイルの読み込み
-- 文書の作成・複製・削除ができるSaved Documents管理
-- ON/OFFを切り替えられるブラウザ内自動保存
-- デスクトップ・モバイルへインストールできるPWA対応
-- ダークモード・スマホ対応
-- ログイン・アカウント・DB・クラウド保存不要
+- Markdown専用のプレーンテキストエディタ
+- KaTeXによるインライン数式・ディスプレイ数式
+- `align`、`gather`、`cases`、各種matrixなどのamsmath風環境
+- mhchemによる化学式（`\ce{...}`）
+- 数式・図・表・plotの自動番号
+- 見出し番号と`[toc]`による自動目次
+- 関数式からSVGグラフを描くplotブロック
+- A4・明朝体・10.5ptのブラウザ印刷PDF
+- New / Open / Saveを中心にしたシンプルなファイル操作
+- `.md`・`.markdown`・`.txt`の読み込みと`.md`保存
+- 前回編集中だった内容のセッション復元
+- 日本語・EnglishのUI、目次、図表番号
+- Syntax GuideとAI生成用プロンプトのコピー
+- PWA、ダークモード、モバイル対応
+- ログイン・クラウド・DB不要
 
-> LaTeX compile is experimental. 初回はWASMとTeX Liveファイルの読み込みに時間がかかります。LaTeXソースはブラウザ内で処理され、サーバーへ送信されません。
+## Syntax
 
-## Screenshots
+通常のMarkdownに加えて、レポート向け構文を利用できます。アプリ内のHelpから完全なSyntax Guideを開けます。
 
-スクリーンショットは今後追加予定です。
+### Math
 
-<!-- Example:
-![MDTeX editor](./docs/screenshots/editor.png)
-![MDTeX mobile view](./docs/screenshots/mobile.png)
--->
+```text
+$E=mc^2$
 
-## Why MDTeX?
+$$
+\int_0^1 x^2\,dx
+$$
 
-Markdownは手軽に文章を書ける一方で、数式を多く含む文書には向かないことがあります。TeXは強力ですが、小さなレポートを書くためには環境構築や学習の負担が大きくなりがちです。
+::equation[エネルギーと質量の関係]
+E=mc^2
+::
+```
 
-また、既存のレポート作成環境は高機能な分だけ重かったり、ログインやクラウド同期が必要だったりします。MDTeXは、その中間となるシンプルな選択肢を目指しています。
+番号なしの独自数式ブロックには`::equation*`を使用します。通常の`$$...$$`も番号なしです。
 
-- Markdownで手軽に文書構造を作れる
-- LaTeXとKaTeXで数式を分かりやすく記述できる
-- ブラウザだけで軽量にレポートを書ける
-- ログインやクラウドに依存せず、端末内で文書を管理できる
+### Chemistry
+
+```text
+$\ce{H2O}$
+
+$$
+\ce{CH4 + 2O2 -> CO2 + 2H2O}
+$$
+```
+
+### Figure And Table
+
+```text
+::figure[波の伝わり方]
+![wave](image.png)
+::
+
+::table[測定結果]
+| A | B |
+|---|---|
+| 1 | 2 |
+::
+```
+
+番号なしは`::figure*`、`::table*`を使用します。
+
+### Plot
+
+```text
+::plot[波の伝わり方]
+title: Q2の波の伝わり方
+xlabel: x
+ylabel: f
+xmin: -4
+xmax: 4
+functions:
+- label: t=0
+  expr: exp(-x^2)
+- label: t=1
+  expr: exp(-(x-1)^2)
+::
+```
+
+plot式では`exp`、`sin`、`cos`、`tan`、`sqrt`、`log`、`x`、`^`、四則演算を使用できます。TikZは対応していません。
+
+### TOC And Page Break
+
+```text
+[toc]
+
+---pagebreak---
+```
+
+## PDF Style
+
+- A4縦、余白22mm
+- 本文10.5pt、行間1.4
+- 日本語は明朝体、英数字はTimes New Roman系
+- 見出し番号、目次、数式、化学式、図表番号
+- テキスト選択可能なブラウザ印刷PDF
+
+印刷ダイアログでは倍率100%を推奨します。ブラウザが追加するヘッダーとフッターはオフにしてください。
 
 ## Tech Stack
 
@@ -51,98 +111,43 @@ Markdownは手軽に文章を書ける一方で、数式を多く含む文書に
 - React
 - TypeScript
 - Tailwind CSS
-- KaTeX
-- SwiftLaTeX / WebAssembly
+- React Markdown
+- KaTeX / mhchem
 
 ## Getting Started
-
-必要な環境:
-
-- Node.js 24
-- npm
-
-依存関係をインストールし、開発サーバーを起動します。
 
 ```bash
 npm install
 npm run dev
 ```
 
-ブラウザで[http://localhost:3000](http://localhost:3000)を開いてください。
-
-本番用ビルド:
+[http://localhost:3000](http://localhost:3000)を開きます。
 
 ```bash
-npm run build
+npm run check
 ```
 
-## Export
+`check`はESLint、TypeScript、Next.js production buildを実行します。
 
-MDTeXは以下の形式で書き出せます。
+## Files And Session Recovery
 
-- Markdown (`.md`)
-- LaTeX (`.tex`)
-- Markdown文書: ブラウザの印刷ダイアログを利用したPDF
-- LaTeX文書: XeTeX + dvipdfmxによるブラウザ内PDFコンパイルとダウンロード
+実際の保存は画面のSaveから`.md`ファイルとして行います。Openは`.md`、`.markdown`、`.txt`を読み込みます。NewとOpenの前には、現在の編集内容を置き換える確認が表示されます。
 
-MarkdownのPDF出力はテキストを選択可能な状態で保ち、KaTeX数式もブラウザ印刷で可能な限りきれいに出力します。
+localStorageは前回編集中だった1件のセッション復元だけに利用します。Documents一覧、クラウド同期、アカウント、端末上の元ファイルへの直接上書きはありません。
 
-### Experimental LaTeX Compile
+旧MDTeX / ReportMD Documents形式のデータが残っている場合は、最後に開いていた内容だけを復元セッションへ引き継ぎます。
 
-LaTeXモードの`Compile PDF`は、`public/swiftlatex`から配信されるSwiftLaTeXのXeTeX/Dvipdfmx WebAssembly Workerを使用します。
+## AI Assistance
 
-1. `.tex`ソースをブラウザ内のXeTeXでXDVへコンパイル
-2. XDVをブラウザ内のdvipdfmxでPDFへ変換
-3. PDF Blobをアプリ内でプレビューし、`Download PDF`で保存
+Helpの「Copy Syntax Guide」と「Copy AI Prompt」（日本語UIでは「構文ガイドをコピー」「AI生成プロンプトをコピー」）から、仕様全文またはAI向けプロンプトをコピーできます。AIサービスへの自動送信やAPI接続は行いません。
 
-LaTeXソースそのものは外部へ送信されません。ただし、必要なTeX Liveクラス・パッケージ・フォントは設定されたTexlive-OnDemandサービスからオンデマンド取得します。そのため初回コンパイルにはインターネット接続が必要です。
+## Limitations
 
-使用するエンドポイントはVercelまたは`.env.local`で設定できます。
-
-```bash
-NEXT_PUBLIC_SWIFTLATEX_TEXLIVE_ENDPOINT=https://your-texlive-server.example.com/
-```
-
-未設定時はTeXlyre公開設定の`https://texlive.texlyre.org/`を使用します。ただし、2026-06-19の調査時点では公開SwiftLaTeX/TeXlyreパッケージサービスが停止しており、デフォルト設定のコンパイルは失敗する可能性があります。確実な運用には[SwiftLaTeX Texlive-OnDemand](https://github.com/SwiftLaTeX/Texlive-Ondemand)のセルフホストが必要です。
-
-日本語の初期テンプレートは`article + xeCJK`を使用します。日本語フォントのHarano Aji MinchoはSIL OFLに基づいてアプリへ同梱し、外部フォントサービスには依存しません。現在の制限は次のとおりです。
-
-- `jsarticle`、pLaTeX、upLaTeXの完全互換は保証しません
-- SwiftLaTeXサービスにないクラス・パッケージ・フォントはコンパイルできません
-- 日本語の禁則処理やフォント品質はデスクトップTeX環境と異なる場合があります
-- 初回のWASM/パッケージ読み込みは重く、モバイルでは時間がかかる場合があります
-- コンパイル失敗時は`Log`タブにXeTeXログと検出できた行番号を表示します
-- TeX Liveサービスへ接続できない場合、WASMが読み込めてもクラス・パッケージ取得で失敗します
-
-VercelではWASMとWorkerを通常の静的ファイルとして配信するため、サーバー側LaTeX環境は不要です。
-
-#### Engine research
-
-- SwiftLaTeX: 約4MBのXeTeX/dvipdfmx WASMを同梱できるため採用。ただしTeX Liveファイルサーバーが別途必要
-- Tectonic: 公式プロジェクトにブラウザ配布用の安定したJavaScript/WASM SDKがないため今回は不採用
-- TeXlyre BusyTeX: 完全ブラウザ実行は可能だが、v1.1.1の公式資産が圧縮状態で約504MBあり、MDTeX/Vercelへの同梱には過大なため不採用
-- LaTeX.js: HTML生成が中心で、正確なPDFコンパイル用途ではないため不採用
-
-## Local Storage
-
-- 文書とAuto Save設定は、ブラウザの`localStorage`に保存されます
-- Saved Documentsはアプリを再読み込みしても保持されます
-- 読み込んだローカルファイルを直接上書きすることはありません
-- クラウド同期は行いません
-- ログインやアカウント作成は不要です
-
-文書は現在使用しているブラウザ内だけに保存されます。重要な文書は定期的に書き出してください。
-
-## Roadmap
-
-- 画像挿入・サイズ調整の改善
-- PDF品質のさらなる改善
-- レポートテンプレート機能
-- 数式スニペット・コマンドの拡充
-- PWA機能の強化
-- `jsarticle` / upLaTeX相当の日本語組版対応強化
-- TeX Live資産のキャッシュとオフラインコンパイル改善
+- 本物のTeX/LaTeXコンパイルは行いません
+- 任意のLaTeXパッケージ、documentclass、TikZには対応しません
+- PDFのページ番号はブラウザ印刷エンジンのCSS page counter対応状況に依存します
+- 複雑なamsmath構文はKaTeXの対応範囲に限られます
 
 ## License
 
-MDTeX本体はMITライセンスです。`public/swiftlatex`の第三者エンジン資産はSwiftLaTeXのライセンスに従います。詳細は`public/swiftlatex/NOTICE.txt`と`LICENSE.txt`を参照してください。
+MIT

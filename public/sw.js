@@ -1,4 +1,4 @@
-const CACHE_NAME = "mdtex-shell-v1";
+const CACHE_NAME = "reportmd-shell-v1";
 
 self.addEventListener("install", () => {
   self.skipWaiting();

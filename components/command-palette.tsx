@@ -2,40 +2,41 @@
 
 import { Command, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EditorMode } from "@/lib/default-content";
-import { getCommands, type CommandSnippet } from "@/lib/snippets";
+import { commands as allCommands, type CommandSnippet } from "@/lib/snippets";
+import { messages, type Locale } from "@/lib/i18n";
 
 type CommandPaletteProps = {
-  mode: EditorMode;
   open: boolean;
   onClose: () => void;
   onSelect: (command: CommandSnippet) => void;
+  locale: Locale;
 };
 
-export function CommandPalette({ mode, open, onClose, onSelect }: CommandPaletteProps) {
+export function CommandPalette({ open, onClose, onSelect, locale }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const commands = useMemo(() => {
     const normalized = query.toLowerCase().trim();
-    return getCommands(mode).filter((command) =>
+    return allCommands.filter((command) =>
       `${command.label} ${command.description} ${command.keywords}`.toLowerCase().includes(normalized),
     );
-  }, [mode, query]);
+  }, [query]);
 
   useEffect(() => {
     if (!open) return;
     setQuery("");
     setActiveIndex(0);
     requestAnimationFrame(() => inputRef.current?.focus());
-  }, [open, mode]);
+  }, [open]);
 
   useEffect(() => {
     setActiveIndex((index) => Math.min(index, Math.max(0, commands.length - 1)));
   }, [commands.length]);
 
   if (!open) return null;
+  const copy = messages[locale];
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") onClose();
@@ -63,7 +64,7 @@ export function CommandPalette({ mode, open, onClose, onSelect }: CommandPalette
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Search ${mode} commands…`}
+            placeholder={copy.searchCommands}
           />
           <button onClick={onClose} aria-label="Close command palette">
             <X size={16} />
@@ -81,15 +82,15 @@ export function CommandPalette({ mode, open, onClose, onSelect }: CommandPalette
                 <Command size={15} />
               </span>
               <span>
-                <strong>{command.label}</strong>
+                <strong>{command.label}<em>{command.category}</em></strong>
                 <small>{command.description}</small>
               </span>
               <code>{command.snippet.split("\n")[0]}</code>
             </button>
           ))}
-          {!commands.length && <div className="palette-empty">No matching commands</div>}
+          {!commands.length && <div className="palette-empty">{copy.noCommands}</div>}
         </div>
-        <div className="palette-footer">↑↓ Navigate · Enter Insert · Esc Close</div>
+        <div className="palette-footer">{copy.paletteFooter}</div>
       </div>
     </div>
   );

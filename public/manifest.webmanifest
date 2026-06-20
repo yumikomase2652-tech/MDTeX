@@ -1,7 +1,7 @@
 {
-  "name": "MDTeX",
-  "short_name": "MDTeX",
-  "description": "Markdown + LaTeX math + PDF export editor",
+  "name": "ReportMD",
+  "short_name": "ReportMD",
+  "description": "Markdownで書けるLaTeX風レポート作成アプリ",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
